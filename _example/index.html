@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gastos</title>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" href="../shared/icon-192.png">
+  <link rel="stylesheet" href="../shared/style.css">
+  <style>
+    /* Acento propio de esta instalacion. El resto de la paleta es compartida (shared/style.css). */
+    :root { --accent: #2a78d6; --accent-fuerte: #1c5cab; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --accent: #3987e5; --accent-fuerte: #86b6ef; }
+    }
+    :root[data-theme="dark"] { --accent: #3987e5; --accent-fuerte: #86b6ef; }
+  </style>
+  <script>
+    (function () {
+      // Mismo sheetId que window.GASTOS_CONFIG.sheetId de mas abajo, repetido
+      // aca a mano (no se puede leer CONFIG todavia en este punto): evita el
+      // flash del tema equivocado al cargar, leyendo el tema guardado ANTES
+      // de que se pinte la pagina.
+      var guardado = localStorage.getItem("gastos-tema-TU_SHEET_ID_ACA");
+      if (guardado === "dark" || guardado === "light") document.documentElement.setAttribute("data-theme", guardado);
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="topbar">
+    <h1>💰 Gastos</h1>
+    <div class="topbar-acciones">
+      <button class="btn-tema" id="btn-privado" title="Ocultar/mostrar montos">👁️</button>
+      <button class="btn-tema" id="btn-tema" title="Cambiar tema">🌙</button>
+      <button class="btn-logout" id="btn-logout" hidden>Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div id="panel-login" class="login-wrap" hidden>
+    <div class="login-card">
+      <h1>Gastos</h1>
+      <p>Iniciá sesión con la cuenta de Google que tiene acceso a esta planilla.</p>
+      <button class="btn-google" id="btn-login">Iniciar sesión con Google</button>
+      <div class="mensaje-error" id="mensaje-error" hidden></div>
+    </div>
+  </div>
+
+  <div id="panel-app" class="contenido" hidden>
+    <div class="tabs">
+      <button class="tab-btn activa" id="tab-ingresos" type="button">Ingreso vs Gastos</button>
+      <button class="tab-btn" id="tab-resumen" type="button">Actividad mensual</button>
+      <button class="tab-btn" id="tab-gastos" type="button">Gastos detalle</button>
+      <button class="tab-btn" id="tab-calendario" type="button">Calendario</button>
+      <button class="tab-btn" id="tab-anual" type="button">Anual</button>
+    </div>
+
+    <div id="vista-resumen" hidden>
+      <div class="calendario-header">
+        <button class="btn secundario chico" id="btn-resumen-mes-anterior" type="button">‹</button>
+        <h2 id="resumen-mes-label">-</h2>
+        <button class="btn secundario chico" id="btn-resumen-mes-siguiente" type="button">›</button>
+      </div>
+
+      <div class="selector-mes-card">
+        <div class="campo-filtro buscador">
+          <label>Ver un mes específico</label>
+          <input type="text" id="selector-mes" list="lista-meses" placeholder="Ej: Junio 2026">
+          <datalist id="lista-meses"></datalist>
+        </div>
+        <button class="btn secundario chico" id="btn-volver-mes-actual">Volver a este mes</button>
+      </div>
+
+      <div class="tarjetas">
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-total-mes">Total demandado este mes</div>
+          <div class="valor" id="total-mes">-</div>
+          <div class="badge-variacion" id="badge-variacion"></div>
+        </div>
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-transporte-mes">Transporte este mes</div>
+          <div class="valor" id="total-transporte-mes">-</div>
+        </div>
+      </div>
+      <p class="grafico-nota">
+        Esta pestaña muestra la actividad registrada ese mes (por fecha de compra), no los gastos reales: lo que
+        compraste con tarjeta de crédito (en cualquiera de las dos tarjetas de arriba) recién se factura el mes
+        que viene, y "Total demandado" no resta lo que ya te cobraron de compras de meses anteriores. El valor
+        real está en la pestaña "Ingreso vs Gastos" ("Plata restante").
+      </p>
+
+      <div class="graficos">
+        <div class="grafico-card">
+          <h2 id="titulo-categoria-credito">Por categoría con tarjeta de crédito (este mes)</h2>
+          <canvas id="grafico-categoria-credito"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2 id="titulo-categoria-debito-efectivo">Por categoría en débito/efectivo (este mes)</h2>
+          <canvas id="grafico-categoria-debito-efectivo"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2 id="titulo-medio-pago">Por medio de pago (este mes)</h2>
+          <canvas id="grafico-medio-pago"></canvas>
+        </div>
+      </div>
+
+      <div class="grafico-card" style="margin-bottom:16px;">
+        <h2 id="titulo-por-dia">Por día (este mes)</h2>
+        <p class="grafico-nota" id="nota-por-dia"></p>
+        <canvas id="grafico-por-dia"></canvas>
+      </div>
+
+    </div>
+
+    <div id="vista-gastos" hidden>
+      <div class="calendario-header">
+        <button class="btn secundario chico" id="btn-gastos-mes-anterior" type="button">‹</button>
+        <h2 id="gastos-mes-label">-</h2>
+        <button class="btn secundario chico" id="btn-gastos-mes-siguiente" type="button">›</button>
+      </div>
+      <div class="filtros-card">
+        <div class="campo-filtro">
+          <label>Desde</label>
+          <input type="date" id="filtro-desde">
+        </div>
+        <div class="campo-filtro">
+          <label>Hasta</label>
+          <input type="date" id="filtro-hasta">
+        </div>
+        <div class="campo-filtro">
+          <label>Categoría</label>
+          <select id="filtro-categoria" multiple size="3" title="Ctrl/Cmd + click para elegir varias"></select>
+        </div>
+        <div class="campo-filtro">
+          <label>Medio de pago</label>
+          <select id="filtro-medio-pago" multiple size="3" title="Ctrl/Cmd + click para elegir varios"></select>
+        </div>
+        <div class="campo-filtro buscador">
+          <label>Buscar</label>
+          <input type="text" id="filtro-buscar" placeholder="Descripción...">
+        </div>
+        <button class="btn" id="btn-aplicar-filtros">Filtrar</button>
+        <button class="btn secundario" id="btn-limpiar-filtros">Limpiar</button>
+        <button class="btn secundario chico" id="btn-agregar-categoria" type="button">+ Categoría</button>
+        <button class="btn secundario chico" id="btn-agregar-medio-pago" type="button">+ Medio de pago</button>
+      </div>
+
+      <div class="tabla-card">
+        <div class="tabla-card-header">
+          <h2>Detalle de gastos</h2>
+          <button class="btn secundario chico" id="btn-exportar-csv">Exportar CSV</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Monto</th>
+              <th>Categoría</th>
+              <th>Medio de pago</th>
+              <th>Descripción</th>
+              <th>Cuota</th>
+              <th>Monto total</th>
+              <th>Mes de pago</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-cuerpo"></tbody>
+        </table>
+        <div class="sin-resultados" id="tabla-sin-resultados" hidden>No hay gastos que coincidan con el filtro.</div>
+      </div>
+    </div>
+
+    <div id="vista-ingresos">
+      <div class="calendario-header">
+        <button class="btn secundario chico" id="btn-ingresos-mes-anterior" type="button">‹</button>
+        <h2 id="ingresos-mes-label">-</h2>
+        <button class="btn secundario chico" id="btn-ingresos-mes-siguiente" type="button">›</button>
+      </div>
+      <div class="selector-mes-card">
+        <div class="campo-filtro buscador">
+          <label>Ver un mes específico</label>
+          <input type="text" id="selector-mes-ingresos" list="lista-meses-ingresos" placeholder="Ej: Junio 2026">
+          <datalist id="lista-meses-ingresos"></datalist>
+        </div>
+        <button class="btn secundario chico" id="btn-volver-mes-actual-ingresos">Volver a este mes</button>
+      </div>
+      <div class="tarjetas">
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-ingresos-mes">Ingresos este mes</div>
+          <div class="valor" id="total-ingresos-mes">-</div>
+        </div>
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-ahorrado-mes">Ahorrado este mes</div>
+          <div class="valor" id="total-ahorrado-mes">-</div>
+        </div>
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-gasto-real">Gasto real este mes</div>
+          <div class="valor" id="total-gasto-real">-</div>
+        </div>
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-diferencia-mes">Plata restante (este mes)</div>
+          <div class="valor" id="valor-diferencia-mes">-</div>
+        </div>
+      </div>
+      <p class="grafico-nota" id="nota-diferencia-mes"></p>
+
+      <div class="graficos" style="margin-bottom:16px;">
+        <div class="grafico-card">
+          <h2 id="titulo-categoria-debito">Por categoría · efectivo/débito/transferencia</h2>
+          <p class="grafico-nota" id="nota-categoria-debito"></p>
+          <canvas id="grafico-categoria-debito"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2 id="titulo-categoria-credito-facturado">Por categoría · crédito</h2>
+          <canvas id="grafico-categoria-credito-facturado"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2 id="titulo-gasto-real-comparacion">Efectivo/débito/transferencia vs crédito facturado</h2>
+          <p class="grafico-nota" id="nota-gasto-real"></p>
+          <canvas id="grafico-gasto-real"></canvas>
+        </div>
+      </div>
+
+      <div class="grafico-card" style="margin-bottom:16px;">
+        <h2>Ingreso vs ahorro (últimos 12 meses)</h2>
+        <canvas id="grafico-ingreso-ahorro"></canvas>
+      </div>
+
+      <div class="tabla-card">
+        <div class="tabla-card-header">
+          <h2>Ingresos</h2>
+          <button class="btn chico" id="btn-agregar-ingreso" type="button">+ Agregar ingreso</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Descripción</th>
+              <th>Monto</th>
+              <th>% Ahorro</th>
+              <th>Ahorrado</th>
+              <th>Disponible</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tabla-ingresos-cuerpo"></tbody>
+        </table>
+        <div class="sin-resultados" id="ingresos-sin-resultados" hidden>Todavía no cargaste ningún ingreso.</div>
+      </div>
+    </div>
+
+    <div id="vista-calendario" hidden>
+      <div class="calendario-header">
+        <button class="btn secundario chico" id="btn-mes-anterior" type="button">‹</button>
+        <h2 id="calendario-titulo">-</h2>
+        <button class="btn secundario chico" id="btn-mes-siguiente" type="button">›</button>
+      </div>
+      <div class="calendario-grid" id="calendario-grid"></div>
+    </div>
+
+    <div id="vista-anual" hidden>
+      <div class="calendario-header">
+        <button class="btn secundario chico" id="btn-anual-anio-anterior" type="button">‹</button>
+        <h2 id="anual-anio-label">-</h2>
+        <button class="btn secundario chico" id="btn-anual-anio-siguiente" type="button">›</button>
+      </div>
+      <div class="tarjetas">
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-total-anio">Total demandado este año</div>
+          <div class="valor" id="total-anio">-</div>
+          <div class="badge-variacion" id="badge-variacion-anual"></div>
+        </div>
+        <div class="tarjeta">
+          <div class="etiqueta" id="etiqueta-transporte-anio">Transporte este año</div>
+          <div class="valor" id="total-transporte-anio">-</div>
+        </div>
+      </div>
+      <p class="grafico-nota">
+        Mismo criterio que Actividad mensual: por fecha de compra, no es la plata realmente pagada.
+      </p>
+      <button class="btn secundario chico" id="btn-volver-anio-actual">Volver a este año</button>
+
+      <div class="graficos" style="margin-top:16px;">
+        <div class="grafico-card">
+          <h2 id="titulo-categoria-anual">Por categoría (año)</h2>
+          <canvas id="grafico-categoria-anual"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2>Ahorro, débito/efectivo y crédito por mes</h2>
+          <canvas id="grafico-anual-por-mes"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2>Evolución mensual (últimos 12 meses)</h2>
+          <p class="grafico-nota">Total histórico: <strong id="total-historico">-</strong></p>
+          <canvas id="grafico-evolucion"></canvas>
+        </div>
+        <div class="grafico-card">
+          <h2>Tarjeta de crédito</h2>
+          <p class="grafico-nota">Últimos 6 meses + cuotas ya cargadas a futuro. Las barras más claras todavía no se facturaron.</p>
+          <canvas id="grafico-tarjeta-credito"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="popup-dia-fondo" hidden>
+    <div class="modal">
+      <h2 id="popup-dia-titulo">-</h2>
+      <div class="popup-dia-total">Total del día: <strong id="popup-dia-total">-</strong></div>
+      <ul class="popup-dia-lista" id="popup-dia-lista"></ul>
+      <div class="acciones">
+        <button class="btn secundario" id="popup-dia-cerrar" type="button">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="lista-categorias-edicion"></datalist>
+  <datalist id="lista-medios-pago-edicion"></datalist>
+
+  <div class="modal-fondo" id="modal-edicion-fondo" hidden>
+    <div class="modal">
+      <h2>Editar gasto</h2>
+      <div class="error" id="modal-edicion-error"></div>
+      <div class="fila-2">
+        <div class="campo">
+          <label>Fecha</label>
+          <input type="date" id="modal-fecha">
+        </div>
+        <div class="campo">
+          <label>Hora</label>
+          <input type="time" id="modal-hora">
+        </div>
+      </div>
+      <div class="campo">
+        <label>Categoría</label>
+        <input type="text" id="modal-categoria" list="lista-categorias-edicion">
+      </div>
+      <div class="campo">
+        <label>Medio de pago</label>
+        <input type="text" id="modal-medio-pago" list="lista-medios-pago-edicion">
+      </div>
+      <div class="campo">
+        <label>Descripción</label>
+        <input type="text" id="modal-descripcion">
+      </div>
+      <div class="campo">
+        <label>Monto total</label>
+        <input type="number" id="modal-monto-total" min="0" step="0.01">
+      </div>
+      <div class="campo" id="campo-modal-mes-pago" hidden>
+        <label>Mes de pago</label>
+        <input type="month" id="modal-mes-pago">
+      </div>
+      <div class="acciones">
+        <button class="btn secundario" id="modal-cancelar" type="button">Cancelar</button>
+        <button class="btn" id="modal-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-mes-pago-solo-fondo" hidden>
+    <div class="modal">
+      <h2>Editar mes de pago</h2>
+      <div class="error" id="modal-mes-pago-solo-error"></div>
+      <p class="grafico-nota">
+        Esta cuota se recalcula sola desde la primera (fecha, monto, categoría, etc.) - pero el mes en que se
+        paga es independiente por cuota, así que se puede corregir solo esta sin afectar a las demás.
+      </p>
+      <div class="campo">
+        <label>Mes de pago</label>
+        <input type="month" id="modal-mes-pago-solo">
+      </div>
+      <div class="acciones">
+        <button class="btn secundario" id="modal-mes-pago-solo-cancelar" type="button">Cancelar</button>
+        <button class="btn" id="modal-mes-pago-solo-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-categoria-fondo" hidden>
+    <div class="modal">
+      <h2>Agregar categoría</h2>
+      <div class="error" id="modal-categoria-error"></div>
+      <div class="campo">
+        <label>Nombre</label>
+        <input type="text" id="categoria-nombre" placeholder="Ej: Mascotas">
+      </div>
+      <div class="campo">
+        <label>Color</label>
+        <div class="paleta-colores" id="paleta-colores"></div>
+        <p class="grafico-nota" id="nota-categoria-colores" hidden></p>
+      </div>
+      <div class="acciones">
+        <button class="btn secundario" id="modal-categoria-cancelar" type="button">Cancelar</button>
+        <button class="btn" id="modal-categoria-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-medio-pago-nuevo-fondo" hidden>
+    <div class="modal">
+      <h2>Agregar medio de pago</h2>
+      <div class="error" id="modal-medio-pago-nuevo-error"></div>
+      <div class="campo">
+        <label>Nombre</label>
+        <input type="text" id="medio-pago-nuevo-nombre" placeholder="Ej: Cripto">
+      </div>
+      <div class="acciones">
+        <button class="btn secundario" id="modal-medio-pago-nuevo-cancelar" type="button">Cancelar</button>
+        <button class="btn" id="modal-medio-pago-nuevo-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-fondo" id="modal-ingreso-fondo" hidden>
+    <div class="modal">
+      <h2 id="modal-ingreso-titulo">Agregar ingreso</h2>
+      <div class="error" id="modal-ingreso-error"></div>
+      <div class="campo">
+        <label>Fecha</label>
+        <input type="date" id="ingreso-fecha">
+      </div>
+      <div class="campo">
+        <label>Descripción</label>
+        <input type="text" id="ingreso-descripcion" placeholder="Sueldo">
+      </div>
+      <div class="campo">
+        <label>Monto</label>
+        <input type="number" id="ingreso-monto" min="0" step="0.01">
+      </div>
+      <div class="fila-2">
+        <div class="campo">
+          <label>Porcentaje a ahorrar (%)</label>
+          <input type="number" id="ingreso-porcentaje" min="0" max="100" step="0.1">
+        </div>
+        <div class="campo">
+          <label>Monto a ahorrar</label>
+          <input type="number" id="ingreso-monto-ahorro" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="acciones">
+        <button class="btn secundario" id="modal-ingreso-cancelar" type="button">Cancelar</button>
+        <button class="btn" id="modal-ingreso-guardar" type="button">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.GASTOS_CONFIG = {
+      // El ID de la Sheet: la parte de la URL entre /d/ y /edit.
+      sheetId: "TU_SHEET_ID_ACA",
+      // El OAuth Client ID (ver README, paso 1). Se puede reusar el mismo
+      // para todas las instalaciones/personas.
+      clientId: "TU_OAUTH_CLIENT_ID_ACA.apps.googleusercontent.com",
+      titulo: "Gastos",
+      // Hash SHA-256 del email de esta persona (ver README como calcularlo).
+      // Nunca pongas el email en texto plano aca.
+      allowedEmailHash: "TU_HASH_SHA256_ACA",
+      // Opcional: tus categorias, en el orden que quieras que tomen color en
+      // los graficos (las primeras 8 tienen colores distintivos, el resto
+      // comparte gris). Si no la definis, se usa una lista default generica.
+      categorias: [
+        "Supermercado",
+        "Delivery/Restaurantes",
+        "Transporte",
+        "Vivienda y servicios",
+        "Entretenimiento",
+        "Ropa",
+        "Suscripciones",
+        "Salud",
+        "Varios",
+        "Otros",
+      ],
+      // Opcional: texto para "todo lo que no es credito" si no usas todos
+      // los medios de pago del default (efectivo/debito/transferencia).
+      // nombreNoCredito: "débito/efectivo",
+      // Opcional: categorias de gasto fijo grande a excluir del grafico
+      // "Por dia" (para que no tapen los gastos chicos del resto del mes).
+      categoriasExcluidasPorDia: [],
+    };
+  </script>
+  <script src="../shared/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,743 @@
+:root {
+  color-scheme: light;
+  --surface-1: #f2f0ec;
+  --surface-2: #faf9f6;
+  --page-plane: #e8e6e0;
+  --text-primary: #1c1b1a;
+  --text-secondary: #55534e;
+  --text-muted: #8b8880;
+  --gridline: #dcd9d1;
+  --border: rgba(20, 18, 15, 0.12);
+  --shadow: 0 1px 2px rgba(20, 18, 15, 0.05), 0 6px 16px rgba(20, 18, 15, 0.08);
+
+  --good: #0ca30c;
+  --critical: #d03b3b;
+
+  /* Paleta de datos (categorias/series de graficos). Los primeros 8 tonos
+     estan validados para distinguirse incluso con daltonismo; el 9-14 son
+     colores extra pedidos a proposito (mas categorias que tonos "seguros"),
+     sin esa garantia. No cambia entre paginas. */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #4a3aa7;
+  --series-8: #e34948;
+  --series-9: #8a5a3c;
+  --series-10: #0e93a8;
+  --series-11: #7d7a1a;
+  --series-12: #5652c9;
+  --series-13: #d1654a;
+  --series-14: #57738a;
+  --series-otros: #8b8880;
+  --series-seq: #2a78d6;
+
+  /* Acento de la interfaz (botones, links, foco): cada pagina lo redefine
+     con un <style> propio en su index.html. Este es el valor por si alguna
+     no lo hace. */
+  --accent: #2a78d6;
+  --accent-fuerte: #1c5cab;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --surface-1: #292824;
+    --surface-2: #302f2b;
+    --page-plane: #16150f;
+    --text-primary: #f6f5f2;
+    --text-secondary: #c7c4bb;
+    --text-muted: #93908a;
+    --gridline: #3d3b35;
+    --border: rgba(255, 255, 255, 0.16);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 20px rgba(0, 0, 0, 0.32);
+
+    --good: #2fc42f;
+    --critical: #e66767;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #2fae2f;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --series-9: #b98a63;
+    --series-10: #35b8ce;
+    --series-11: #aaa62e;
+    --series-12: #8b87e8;
+    --series-13: #e08a70;
+    --series-14: #86a3b8;
+    --series-otros: #93908a;
+    --series-seq: #3987e5;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #292824;
+  --surface-2: #302f2b;
+  --page-plane: #16150f;
+  --text-primary: #f6f5f2;
+  --text-secondary: #c7c4bb;
+  --text-muted: #93908a;
+  --gridline: #3d3b35;
+  --border: rgba(255, 255, 255, 0.16);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 20px rgba(0, 0, 0, 0.32);
+
+  --good: #2fc42f;
+  --critical: #e66767;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #2fae2f;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --series-9: #b98a63;
+  --series-10: #35b8ce;
+  --series-11: #aaa62e;
+  --series-12: #8b87e8;
+  --series-13: #e08a70;
+  --series-14: #86a3b8;
+  --series-otros: #93908a;
+  --series-seq: #3987e5;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--page-plane);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* El atributo "hidden" tiene que ganarle a cualquier "display" que le
+   pongamos a un elemento por clase (ej: .login-wrap usa display:flex) - sin
+   esto, un elemento con class="login-wrap" y "hidden" a la vez NUNCA se
+   ocultaba de verdad, aunque el JS le pusiera hidden = true. */
+[hidden] {
+  display: none !important;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-1);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar h1 {
+  font-size: 17px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-tema {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.btn-logout {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-logout:hover {
+  color: var(--text-primary);
+}
+
+.contenido {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Login */
+.login-wrap {
+  min-height: 80vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.login-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 34px 30px;
+  max-width: 360px;
+  box-shadow: var(--shadow);
+}
+
+.login-card p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 20px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.btn-google:hover {
+  background: var(--accent-fuerte);
+}
+
+.mensaje-error {
+  background: color-mix(in srgb, var(--critical) 12%, transparent);
+  color: var(--critical);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  margin-top: 16px;
+  text-align: left;
+}
+
+/* Tarjetas / graficos */
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.tarjeta {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+}
+
+.tarjeta .etiqueta {
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.tarjeta .valor {
+  font-size: 29px;
+  font-weight: 600;
+  font-variant-numeric: proportional-nums;
+}
+
+.badge-variacion {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 999px;
+  margin-top: 8px;
+}
+
+.badge-variacion.buena {
+  color: var(--good);
+  background: color-mix(in srgb, var(--good) 14%, transparent);
+}
+
+.badge-variacion.mala {
+  color: var(--critical);
+  background: color-mix(in srgb, var(--critical) 14%, transparent);
+}
+
+.tarjeta .valor.buena {
+  color: var(--good);
+}
+
+.tarjeta .valor.mala {
+  color: var(--critical);
+}
+
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.grafico-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.grafico-card h2 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.grafico-card canvas {
+  max-height: 280px;
+}
+
+#grafico-por-dia {
+  max-height: 360px;
+}
+
+.grafico-nota {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: -6px 0 10px 0;
+}
+
+/* Filtros */
+.filtros-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: end;
+}
+
+.campo-filtro {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.campo-filtro label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.campo-filtro input,
+.campo-filtro select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 14px;
+}
+
+.campo-filtro input:focus,
+.campo-filtro select:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.campo-filtro.buscador {
+  flex: 1;
+  min-width: 160px;
+}
+
+.campo-filtro select[multiple] {
+  min-width: 150px;
+  padding: 4px;
+}
+
+.campo-filtro select[multiple] option {
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.btn {
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--accent-fuerte);
+}
+
+.btn.secundario {
+  background: var(--surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn.secundario:hover {
+  background: var(--page-plane);
+}
+
+.btn.chico {
+  padding: 5px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+}
+
+/* Tabla */
+.tabla-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  overflow-x: auto;
+}
+
+.tabla-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tabla-card-header h2 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  text-align: left;
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--gridline);
+  white-space: nowrap;
+}
+
+th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+tbody tr:hover {
+  background: var(--page-plane);
+}
+
+td:nth-child(2), td:nth-child(7) {
+  font-variant-numeric: tabular-nums;
+}
+
+.sin-resultados {
+  color: var(--text-muted);
+  font-size: 14px;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Selector de "ver un mes especifico" */
+.selector-mes-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* Pestañas Resumen / Calendario */
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  padding: 10px 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.tab-btn.activa {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Calendario */
+.calendario-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.calendario-header h2 {
+  margin: 0;
+  font-size: 16px;
+  min-width: 160px;
+  text-align: center;
+}
+
+.calendario-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.calendario-dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-bottom: 6px;
+}
+
+.calendario-celda {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--page-plane);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: default;
+  padding: 0;
+}
+
+.calendario-celda.vacia {
+  background: transparent;
+}
+
+.calendario-celda.hoy {
+  border-color: var(--accent);
+}
+
+.calendario-celda.con-gasto {
+  cursor: pointer;
+  background: var(--surface-2);
+}
+
+.calendario-celda.con-gasto:hover {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+}
+
+.calendario-celda .punto {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+/* Popup de detalle de un dia */
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modal {
+  background: var(--surface-1);
+  border-radius: 16px;
+  padding: 22px;
+  width: 100%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+
+.modal h2 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+}
+
+.popup-dia-total {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.popup-dia-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.popup-dia-lista li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--page-plane);
+  border-radius: 8px;
+}
+
+.popup-dia-lista .cat {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.popup-dia-lista .desc {
+  font-size: 14px;
+}
+
+.popup-dia-lista .monto {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal .acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Modal de edicion de un gasto (solo cuota 1) */
+.modal .campo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  text-align: left;
+}
+
+.modal .campo label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.modal .campo input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.modal .fila-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.modal .error {
+  color: var(--critical);
+  font-size: 13px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+/* Selector de color al agregar una categoria nueva */
+.paleta-colores {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.paleta-colores .swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  padding: 0;
+}
+
+.paleta-colores .swatch.seleccionado {
+  border-color: var(--text-primary);
+}
+
+.paleta-colores .swatch.usado {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.pill-no-editable {
+  color: var(--text-muted);
+  font-size: 12px;
+}

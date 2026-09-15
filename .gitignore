@@ -1,0 +1,12 @@
+# Repo pensado para publicarse: ninguna carpeta de una instalacion real
+# (con tu sheetId/clientId/hash real) deberia ir a un fork publico de esto.
+# Si vas a mantener tu fork publico, gitignorea tu(s) carpeta(s) real(es)
+# aca abajo (mismo criterio que el proyecto hermano, el bot). Si tu fork es
+# privado no hace falta.
+#/mi-carpeta-real/
+
+.DS_Store
+*.log
+node_modules/
+__pycache__/
+*.pyc
